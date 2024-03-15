@@ -1,12 +1,12 @@
 {
-	"name": "workshop_make-your-own-codewars",
+	"name": "asynk-yield",
 	"version": "1.0.0",
-	"description": "",
-	"main": "index.js",
+	"description": "Get sweet with this little kata to reimplement async/await",
+	"main": "main.js",
 	"scripts": {
 		"test": "vitest"
 	},
-	"author": "School of Code",
+	"author": "David MacDonald",
 	"license": "ISC",
 	"devDependencies": {
 		"vitest": "^1.3.1"
