@@ -1,6 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { asynk } from "./main.js";
 
+const getVal = () => Math.floor(Math.random() * 100);
+const timeout = (x) => new Promise((res, rej) => setTimeout(res, 0, x));
+
 describe("Works with Promises", () => {
 	it("Should return a Promise if only `yield` is used", () => {
 		const result = asynk(function* () {
@@ -42,48 +45,58 @@ describe("Works with Promises", () => {
 });
 
 describe("Yielding values", () => {
-	const timeout = (x) => new Promise((res, rej) => setTimeout(res, 0, x));
 	it("Should have access to the Promise value once resolved", async () => {
+		const actualA = getVal();
 		const result = asynk(function* () {
-			const value = yield Promise.resolve(4);
+			const value = yield Promise.resolve(actualA);
 			return value;
 		});
-		await expect(result).resolves.toBe(4);
+		await expect(result).resolves.toBe(actualA);
 	});
 
 	it("Should be able to get the results of two Promises and return their sum", async () => {
+		const actualA = getVal();
+		const actualB = getVal();
+		const actualResult = actualA + actualB;
 		const result = asynk(function* () {
-			const a = yield Promise.resolve(4);
-			const b = yield Promise.resolve(5);
+			const a = yield Promise.resolve(actualA);
+			const b = yield Promise.resolve(actualB);
 			return a + b;
 		});
-		await expect(result).resolves.toBe(9);
+		await expect(result).resolves.toBe(actualResult);
 	});
 
 	it("Should handle the case of a Promise being returned", async () => {
+		const actualA = getVal();
+		const actualB = getVal();
+		const actualResult = actualA + actualB;
 		const result = asynk(function* () {
-			const a = yield Promise.resolve(4);
-			const b = yield Promise.resolve(5);
+			const a = yield Promise.resolve(actualA);
+			const b = yield Promise.resolve(actualB);
 			return Promise.resolve(a + b);
 		});
-		await expect(result).resolves.toBe(9);
+		await expect(result).resolves.toBe(actualResult);
 	});
 
 	it("Should work when using timeouts", async () => {
+		const actualA = getVal();
+		const actualB = getVal();
+		const actualResult = actualA + actualB;
 		const result = asynk(function* () {
-			const a = yield timeout(11);
-			const b = yield timeout(a + 3);
+			const a = yield timeout(actualA);
+			const b = yield timeout(a + actualB);
 			return b;
 		});
-		await expect(result).resolves.toBe(14);
+		await expect(result).resolves.toBe(actualResult);
 	});
 });
 
 describe("Errors", () => {
+	const rejectionMessage = "REJECTION!";
 	const timeoutResolve = (x) =>
 		new Promise((res, rej) => setTimeout(res, 0, x));
 	const timeoutReject = () =>
-		new Promise((res, rej) => setTimeout(rej, 0, "REJECTION!"));
+		new Promise((res, rej) => setTimeout(rej, 0, rejectionMessage));
 
 	it("Should not throw an error when there is a resolved Promise", async () => {
 		const result = asynk(function* () {
@@ -102,15 +115,16 @@ describe("Errors", () => {
 	});
 
 	it("Should not catch an error with try/catch when there is a resolved Promise", async () => {
+		const actualA = getVal();
 		const result = asynk(function* () {
 			try {
-				const a = yield timeoutResolve(5);
+				const a = yield timeoutResolve(actualA);
 				return a;
 			} catch (err) {
 				return err;
 			}
 		});
-		await expect(result).resolves.toBe(5);
+		await expect(result).resolves.toBe(actualA);
 	});
 
 	it("Should catch errors with try/catch when there is a rejected Promise", async () => {
@@ -122,49 +136,75 @@ describe("Errors", () => {
 				return err;
 			}
 		});
-		await expect(result).resolves.toEqual(new Error("REJECTION!"));
+		await expect(result).resolves.toBeInstanceOf(Error);
+	});
+
+	it("Should throw the rejection argument as an Error", async () => {
+		const result = asynk(function* () {
+			try {
+				const a = yield timeoutReject();
+				return a;
+			} catch (err) {
+				return err;
+			}
+		});
+		await expect(result).resolves.toEqual(new Error(rejectionMessage));
 	});
 });
 
 describe("Special case yields", () => {
-	const inner = function* () {
-		const n = yield Promise.resolve(10);
-		return n + 5;
+	const square = function* (v) {
+		const n = yield Promise.resolve(v);
+		const n2 = yield Promise.resolve(v);
+		return n * n2;
 	};
 
+	const squareThunk = (v) =>
+		function* () {
+			const n = yield Promise.resolve(v);
+			const n2 = yield Promise.resolve(v);
+			return n * n2;
+		};
+
 	it("Should should handle yield*", async () => {
+		const actualA = getVal();
+		const actualB = getVal();
+		const actualResult = actualA * actualA + actualB;
 		const result = asynk(function* () {
-			const a = yield* inner();
-			return a + 7;
+			const a = yield* square(actualA);
+			return a + actualB;
 		});
-		await expect(result).resolves.toBe(22);
+		await expect(result).resolves.toBe(actualResult);
 	});
 
 	it("Should should handle yielding other asynk results", async () => {
+		const actualA = getVal();
+		const actualB = getVal();
+		const actualResult = actualA * actualA + actualB;
 		const result = asynk(function* () {
-			const a = yield asynk(inner);
-			return a + 7;
+			const a = yield asynk(squareThunk(actualA));
+			return a + actualB;
 		});
-		await expect(result).resolves.toBe(22);
+		await expect(result).resolves.toBe(actualResult);
 	});
 
 	it("Should should handle yielding other asynk results", async () => {
+		const actualA = getVal();
+		const actualB = getVal();
+		const actualResult = actualA * actualA + actualB;
 		const result = asynk(function* () {
-			const a = yield asynk(inner);
-			return a + 7;
+			const a = yield asynk(squareThunk(actualA));
+			return a + actualB;
 		});
-		await expect(result).resolves.toBe(22);
+		await expect(result).resolves.toBe(actualResult);
 	});
 });
 
 describe("Real use case simulation", () => {
+	const notFoundMessage = "No user with that ID!";
 	const getUserById = (id) =>
 		new Promise((res, rej) =>
-			setTimeout(
-				users[id] ? res : rej,
-				0,
-				users[id] ?? "No user with that ID!",
-			),
+			setTimeout(users[id] ? res : rej, 0, users[id] ?? notFoundMessage),
 		);
 
 	const users = [
@@ -213,6 +253,6 @@ describe("Real use case simulation", () => {
 			return user.experience;
 		});
 		await expect(result).rejects.toThrow();
-		await expect(result).rejects.toEqual(new Error("No user with that ID!"));
+		await expect(result).rejects.toEqual(new Error(notFoundMessage));
 	});
 });
