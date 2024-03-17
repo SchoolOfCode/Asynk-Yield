@@ -3,6 +3,7 @@
 	"version": "1.0.0",
 	"description": "Get sweet with this little kata to reimplement async/await",
 	"main": "main.js",
+	"type": "module",
 	"scripts": {
 		"test": "vitest"
 	},

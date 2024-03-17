@@ -57,13 +57,6 @@ describe("Works with Promises", () => {
 		expect(result).toBeInstanceOf(Promise);
 		await expect(result).resolves.toBe(undefined);
 	});
-	it("Should throw an error if a non-Promise is yielded", () => {
-		const result = () =>
-			asynk(function* () {
-				yield 1;
-			});
-		expect(result).toThrow();
-	});
 	it("Should return a Promise of undefined if only `return` is used", async () => {
 		const result = asynk(function* () {
 			return;
@@ -172,7 +165,15 @@ describe("Yielding values", () => {
 });
 
 describe("Errors and Rejections", () => {
-	it("Should not throw in place", async () => {
+	it("Should only throw in place if a non-Promise is yielded", () => {
+		const result = () =>
+			asynk(function* () {
+				yield 1;
+			});
+		expect(result).toThrow();
+	});
+
+	it("Should not throw in place otherwise", async () => {
 		const randomLimit = getNumberBetween(5, 10);
 		await loop(randomLimit)(async () => {
 			const err = new Error(getRandomString());
@@ -288,6 +289,7 @@ describe("Errors and Rejections", () => {
 						const b = yield timeout(y);
 						return operation(a, b);
 					} catch (err) {
+						// biome-ignore lint/complexity/noUselessCatch: <explanation>
 						throw err;
 					}
 				});
